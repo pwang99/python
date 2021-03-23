@@ -1,0 +1,66 @@
+#import necessary modules
+import csv
+import os
+from datetime import datetime
+
+reader = csv.DictReader(open("input.txt.ORIG"), delimiter='\t')
+line_count = 0
+repeat = 0
+for row in reader:
+    HD_NUM = row["Publication Name"][-5:]
+    if HD_NUM != repeat:
+        rdf = open('output.rdf', 'w')
+        rdf.write("Template-Type: ReDIF-Paper 1.0\n")
+
+        Author_list=row["Author List"].split("; ")
+        for author in range(len(Author_list)):
+            rdf.write("Author-Name: " "{}" "\n".format(Author_list[author]))
+            Author_full=Author_list[author].split(", ")
+            rdf.write("Author-Name-Last: " "{}" "\n".format(Author_list[author].split(", ")[0]))
+            if len(Author_list[author].split(", ")) == 2 :
+                rdf.write("Author-Name-First: " "{}" "\n".format(Author_list[author].split(", ")[1]))
+
+#        rdf.write("Author-Name: " "{}" "\n".format(row["Author List"]))
+
+        rdf.write("Author-Workplace-Name: " "{}" "\n".format(row["Record Type"]))
+        rdf.write("Title: " "{}" "\n".format(row["Title"]))
+
+        if row["Article Text"] == "":
+            rdf.write("Abstract: Abstract not available.\n")
+        else:
+            rdf.write("Abstract: " "{}" "\n".format(row["Article Text"]))
+
+        if row["Pages"] == "":
+            rdf.write("Length: Length not available.\n")
+        else:
+            rdf.write("Length: " "{}" "\n".format(row["Pages"]))
+#       rdf.write("Creation-Date: " "{}" "\n".format(row["Release Date"]))
+
+        if row["Release Date"] != "" :
+#           RELEASE_DATE=datetime.strftime(row["Release Date"], '%m/%d/%Y')
+               rdf.write("Creation-Date: " "{}" "\n".format(datetime.strptime(row["Release Date"], '%m/%d/%Y').date()))
+        else:
+            rdf.write("Creation-Date: " "{}" "\n".format(row["Release Date"]))
+
+        if row["Status"] == "Released":
+            rdf.write("Publication-Status: Published\n")
+        else:
+            rdf.write("Publication-Status: Forthcoming\n")
+#       rdf.write("Publication-Status: " "{}" "\n".format(row["Status"]))
+
+        if row["Publication Name"] != "":
+            HD_NUM = row["Publication Name"][-5:]
+            rdf.write("Number: " "{}" "\n".format(HD_NUM))
+            rdf.write("Handle: RePEc:ajw:wpaper:" "{}" "\n".format(HD_NUM))
+        else:
+            rdf.write("Number: " "{}" "\n".format(row["Publication Name"]))
+            rdf.write("Handle: RePEc:ajw:wpaper:" "{}" "\n".format(row["Publication Name"]))
+        rdf.close()
+        os.rename('output.rdf', 'mcgmu-paper-'+HD_NUM+'.rdf')
+    else:
+        print (f"Duplciated : {HD_NUM}")
+        line_count += 1
+
+    repeat = HD_NUM
+
+print(f'Duplicatd {line_count} lines.')

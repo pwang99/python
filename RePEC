@@ -1,0 +1,102 @@
+#import necessary modulesper
+
+import csv
+import os
+import shutil
+from datetime import datetime
+
+reader = csv.DictReader(open("input.txt"), delimiter='\t')
+line_count = 0
+repeat = ""
+
+for row in reader:
+    HD_NUM = row["Publication Name"][-5:]
+    HD_TYPE = row["Type"]
+
+    if HD_NUM != repeat:
+        if HD_TYPE == "Working Paper":
+             HD_PATH='/var/www/html/RePEc/ajw/wpaper/'
+             rdf = open('Paper.rdf', 'w')
+             rdf.write("Template-Type: ReDIF-Paper 1.0\n")
+        elif HD_TYPE == "Special Study" or HD_TYPE == "Research Paper":
+             HD_PATH='/var/www/html/RePEc/ajw/journl/'
+             rdf = open('Article.rdf', 'w')
+             rdf.write("Template-Type: ReDIF-Article 1.0\n")
+        else:
+             rdf = open('UNTYPE.rdf', 'w')
+             print (f"aaa{HD_TYPE}bbb is an UNKOWN type\n")
+
+
+        Author_list=row["Author List"].split("; ")
+        for author in range(len(Author_list)):
+            rdf.write("Author-Name: " "{}" "\n".format(Author_list[author]))
+            Author_full=Author_list[author].split(", ")
+            rdf.write("Author-Name-Last: " "{}" "\n".format(Author_list[author].split(", ")[0]))
+            if len(Author_list[author].split(", ")) == 2 :
+                 rdf.write("Author-Name-First: " "{}" "\n".format(Author_list[author].split(", ")[1]))
+
+#        rdf.write("Author-Name: " "{}" "\n".format(row["Author List"]))
+
+        rdf.write("Author-Workplace-Name: " "{}" "\n".format(row["Record Type"]))
+        rdf.write("Title: " "{}" "\n".format(row["Title"]))
+
+        if row["Article Text"] == "":
+            rdf.write("Abstract: Abstract not available.\n")
+        else:
+            rdf.write("Abstract: " "{}" "\n".format(row["Article Text"]))
+
+        if row["Pages"] == "" and HD_TYPE == "Working Paper":
+            rdf.write("Length: Length not available.\n")
+
+        if row["Pages"] != "":
+            rdf.write("Length: " "{}" "\n".format(row["Pages"]))
+#       rdf.write("Creation-Date: " "{}" "\n".format(row["Release Date"]))
+
+        if row["Release Date"] != "" :
+            RELEASE_DATE = datetime.strptime(row["Release Date"], '%m/%d/%Y').date()
+            if HD_TYPE == "Working Paper":
+                rdf.write("Creation-Date: " "{}" "\n".format(datetime.strptime(row["Release Date"], '%m/%d/%Y').date()))
+            else:
+                rdf.write("Year: " "{}" "\n".format(RELEASE_DATE.year))
+                rdf.write("Month: " "{}" "\n".format(RELEASE_DATE.month))
+        else:
+            rdf.write("Creation-Date: " "{}" "\n".format(row["Release Date"]))
+
+        if row["Status"] == "Released":
+            rdf.write("Publication-Status: Published\n")
+        else:
+            rdf.write("Publication-Status: Forthcoming\n")
+#       rdf.write("Publication-Status: " "{}" "\n".format(row["Status"]))
+
+        if row["Final Product Download Link"] != "":
+            rdf.write("File-URL: " "{}" "\n".format(row["Final Product Download Link"]))
+            rdf.write("File-Format: Application/pdf\n")
+
+        if HD_TYPE == "Working Paper":
+            rdf.write("Number: " "{}" "\n".format(HD_NUM))
+            rdf.write("Handle: RePEc:ajw:wpaper:" "{}" "\n".format(HD_NUM))
+        elif HD_TYPE == "Special Study" or HD_TYPE == "Research Paper":
+            rdf.write("Handle: RePEc:ajw:journl:" "{}" "\n".format(HD_NUM))
+
+#        else:
+#            rdf.write("Number: " "{}" "\n".format(row["Publication Name"]))
+#            rdf.write("Handle: RePEc:ajw:wpaper:" "{}" "\n".format(row["Publication Name"]))
+
+        rdf.close()
+
+        if os.path.isfile('./Paper.rdf') :
+            shutil.move('Paper.rdf', HD_PATH+'mcgmu-paper-'+HD_NUM+'.rdf')
+        elif os.path.isfile('./Article.rdf'):
+            shutil.move('Article.rdf', HD_PATH+'mcgmu-article-'+HD_NUM+'.rdf')
+        else:
+            print(f'{line_count} lines at {HD_NUM} .')
+
+
+    else:
+        print (f"Duplciated : {HD_NUM}")
+        line_count += 1
+
+    repeat = HD_NUM
+
+os.system('restorecon -R -v /var/www/html/RePEc/ajw/')
+print(f'===========================================\nDuplicatd {line_count} lines.\n')
